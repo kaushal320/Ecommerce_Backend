@@ -12,6 +12,7 @@ import authRoutes from "./routes/authRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import orderRoutes from "./routes/orderRoutes.js";
 import cookieParser from "cookie-parser";
+import categoryRoutes from "./routes/categoryRoutes.js";
 
 const app = express();
 // Middleware
@@ -27,6 +28,7 @@ connectDB();
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // Error Handler
 app.use(errorHandler);

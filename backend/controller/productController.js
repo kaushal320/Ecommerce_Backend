@@ -3,11 +3,13 @@ import Product from "../models/Product.models.js";
 import cloudinary from "../config/cloudinary.js";
 import path from "path";
 import fs from "fs/promises";
+import Category from "../models/Category.models.js"; // ✅ import Category
 
 // === Get All Products ===
 export const getProducts = asyncHandler(async (req, res) => {
   try {
-    const products = await Product.find({});
+    const products = await Product.find({}).populate("category", "name slug");
+
     res.status(200).json({
       success: true,
       products,
@@ -30,28 +32,36 @@ export const createProduct = asyncHandler(async (req, res) => {
       throw new Error("Please fill all required fields");
     }
 
+    // ✅ Validate that the category exists
+    const existingCategory = await Category.findById(category);
+    if (!existingCategory) {
+      res.status(400);
+      throw new Error("Invalid category selected");
+    }
+
     let imageUrl = "";
     let imagePublicId = "";
+
     if (req.file) {
       const absolutePath = path.resolve(req.file.path);
       const result = await cloudinary.uploader.upload(absolutePath, {
         folder: "ecommerce/products",
         resource_type: "image",
       });
-       imagePublicId = result.public_id;
+      imagePublicId = result.public_id;
       imageUrl = result.secure_url;
-      await fs.unlink(req.file.path); // cleanup temp file
+      await fs.unlink(req.file.path);
     }
 
     const product = new Product({
       name,
-      imagePublicId,
       description,
       price,
-      category,
+      category, // This is an ObjectId referring to Category
       stock,
       image: imageUrl,
-      createdBy: req.user._id, // must be coming from protected route
+      imagePublicId,
+      createdBy: req.user._id,
     });
 
     const createdProduct = await product.save();
@@ -69,6 +79,7 @@ export const createProduct = asyncHandler(async (req, res) => {
     });
   }
 });
+
 export const updateProduct = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, stock } = req.body;
