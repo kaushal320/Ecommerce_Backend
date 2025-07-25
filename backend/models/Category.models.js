@@ -38,5 +38,6 @@ categorySchema.pre("save", function (next) {
   }
   next();
 });
+categorySchema.index({ name: "text", description: "text" });
 
 export default mongoose.model("Category", categorySchema);

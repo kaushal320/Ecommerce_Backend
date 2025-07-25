@@ -3,7 +3,7 @@ import Product from "../models/Product.models.js";
 import cloudinary from "../config/cloudinary.js";
 import path from "path";
 import fs from "fs/promises";
-import Category from "../models/Category.models.js"; // ✅ import Category
+import Category from "../models/Category.models.js";
 
 // === Get All Products ===
 export const getProducts = asyncHandler(async (req, res) => {
@@ -48,16 +48,18 @@ export const createProduct = asyncHandler(async (req, res) => {
         folder: "ecommerce/products",
         resource_type: "image",
       });
+
       imagePublicId = result.public_id;
       imageUrl = result.secure_url;
-      await fs.unlink(req.file.path);
+      await fs.unlink(req.file.path); // remove local file
     }
+     console.log("Uploaded file:", req.file);
 
     const product = new Product({
       name,
       description,
       price,
-      category, // This is an ObjectId referring to Category
+      category,
       stock,
       image: imageUrl,
       imagePublicId,
@@ -66,10 +68,16 @@ export const createProduct = asyncHandler(async (req, res) => {
 
     const createdProduct = await product.save();
 
+    // ✅ Populate category before sending response
+    const populatedProduct = await Product.findById(
+      createdProduct._id
+    ).populate("category", "name slug");
+   
+
     res.status(201).json({
       success: true,
       message: "Product created successfully",
-      product: createdProduct,
+      product: populatedProduct,
     });
   } catch (err) {
     console.error("Error creating product:", err);
@@ -80,6 +88,7 @@ export const createProduct = asyncHandler(async (req, res) => {
   }
 });
 
+// === Update Product ===
 export const updateProduct = asyncHandler(async (req, res) => {
   try {
     const { name, description, price, category, stock } = req.body;
@@ -91,7 +100,6 @@ export const updateProduct = asyncHandler(async (req, res) => {
       throw new Error("Product not found");
     }
 
-    // Optional: Update fields only if provided
     product.name = name || product.name;
     product.description = description || product.description;
     product.price = price || product.price;
@@ -104,16 +112,22 @@ export const updateProduct = asyncHandler(async (req, res) => {
         folder: "ecommerce/products",
         resource_type: "image",
       });
+
       product.image = result.secure_url;
-      await fs.unlink(req.file.path); // cleanup temp file
+      product.imagePublicId = result.public_id;
+      await fs.unlink(req.file.path);
     }
 
     const updatedProduct = await product.save();
 
+    const populatedProduct = await Product.findById(
+      updatedProduct._id
+    ).populate("category", "name slug");
+
     res.status(200).json({
       success: true,
       message: "Product updated successfully",
-      product: updatedProduct,
+      product: populatedProduct,
     });
   } catch (err) {
     res.status(500).json({
@@ -122,10 +136,11 @@ export const updateProduct = asyncHandler(async (req, res) => {
     });
   }
 });
+
+// === Delete Product ===
 export const deleteProduct = asyncHandler(async (req, res) => {
   try {
     const productId = req.params.id;
-
     const product = await Product.findById(productId);
     if (!product) {
       res.status(404);
@@ -133,6 +148,7 @@ export const deleteProduct = asyncHandler(async (req, res) => {
     }
 
     await Product.deleteOne({ _id: productId });
+
     if (product.imagePublicId) {
       await cloudinary.uploader.destroy(product.imagePublicId);
     }
