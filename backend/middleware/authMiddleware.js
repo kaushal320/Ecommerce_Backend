@@ -33,6 +33,7 @@ export const protect = asyncHandler(async (req, res, next) => {
   }
 });
 
+
 // Middleware to restrict access to admin users
 export const admin = asyncHandler(async (req, res, next) => {
   if (req.user && req.user.role === "admin") {
@@ -44,3 +45,5 @@ export const admin = asyncHandler(async (req, res, next) => {
     message: "Access denied. Admin privileges required.",
   });
 });
+ 
+
